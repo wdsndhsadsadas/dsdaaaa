@@ -1,0 +1,98 @@
+local player = game.Players.LocalPlayer
+local mouse = player:GetMouse()
+local camera = game.Workspace.CurrentCamera
+local aimbotEnabled = false
+local target = nil
+
+-- Create the GUI
+local screenGui = Instance.new("ScreenGui")
+screenGui.Parent = player:WaitForChild("PlayerGui")
+
+-- Create a draggable frame
+local mainFrame = Instance.new("Frame")
+mainFrame.Size = UDim2.new(0, 160, 0, 60)
+mainFrame.Position = UDim2.new(0.4, 0, 0.1, 0)
+mainFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+mainFrame.BorderSizePixel = 2
+mainFrame.Parent = screenGui
+mainFrame.Active = true
+mainFrame.Draggable = true -- Makes the GUI draggable
+
+-- Create the Aimbot button inside the frame
+local button = Instance.new("TextButton")
+button.Size = UDim2.new(1, -10, 0.7, -5) -- Slightly smaller to fit inside
+button.Position = UDim2.new(0, 5, 0, 5) -- Centered with padding
+button.Text = "Aimbot: OFF"
+button.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+button.TextColor3 = Color3.new(1, 1, 1)
+button.Font = Enum.Font.SourceSansBold
+button.TextSize = 20
+button.Parent = mainFrame
+
+-- Create Aimbot Indicator (White Circle)
+local aimCircle = Instance.new("Frame")
+aimCircle.Size = UDim2.new(0, 120, 0, 120) -- Make it bigger (120px)
+aimCircle.Position = UDim2.new(0.5, -60, 0.5, -60) -- Center it based on screen size
+aimCircle.BackgroundTransparency = 1
+aimCircle.Parent = screenGui
+
+local uiCorner = Instance.new("UICorner") -- Makes it round
+uiCorner.CornerRadius = UDim.new(1, 0)
+uiCorner.Parent = aimCircle
+
+local uiStroke = Instance.new("UIStroke") -- White border
+uiStroke.Thickness = 2
+uiStroke.Color = Color3.fromRGB(255, 255, 255)
+uiStroke.Parent = aimCircle
+
+aimCircle.Visible = false -- Hide initially
+
+-- Function to find the closest player's head
+local function getClosestTarget()
+    local closest = nil
+    local shortestDistance = math.huge
+
+    for _, v in pairs(game.Players:GetPlayers()) do
+        if v ~= player and v.Character and v.Character:FindFirstChild("Head") then
+            local headPos, onScreen = camera:WorldToViewportPoint(v.Character.Head.Position)
+            if onScreen then
+                local distance = (Vector2.new(mouse.X, mouse.Y) - Vector2.new(headPos.X, headPos.Y)).magnitude
+                if distance < shortestDistance then
+                    shortestDistance = distance
+                    closest = v.Character.Head
+                end
+            end
+        end
+    end
+
+    return closest
+end
+
+-- Toggle Aimbot
+button.MouseButton1Click:Connect(function()
+    aimbotEnabled = not aimbotEnabled
+    aimCircle.Visible = aimbotEnabled -- Show or hide indicator
+
+    if aimbotEnabled then
+        button.Text = "Aimbot: ON"
+        button.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+    else
+        button.Text = "Aimbot: OFF"
+        button.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+        target = nil
+    end
+end)
+
+-- Aimbot Logic
+game:GetService("RunService").RenderStepped:Connect(function()
+    if aimbotEnabled then
+        target = getClosestTarget()
+        if target then
+            camera.CFrame = CFrame.new(camera.CFrame.Position, target.Position)
+
+            -- Update indicator position around the crosshair
+            local screenCenter = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)  -- Center of the screen
+            aimCircle.Position = UDim2.new(0, screenCenter.X - aimCircle.Size.X.Offset / 2, 0, screenCenter.Y - aimCircle.Size.Y.Offset / 2)
+        end
+    end
+end)
